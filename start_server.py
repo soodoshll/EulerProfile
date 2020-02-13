@@ -3,32 +3,16 @@ import argparse
 import config
 
 parser = argparse.ArgumentParser()
-# parser.add_argument('--dir', type=str)
-# parser.add_argument('--loader', type=str)
-# parser.add_argument('--hdfs_addr', type=str)
-# parser.add_argument('--hdfs_port', type=int)
-# parser.add_argument('--shard_idx', type=int)
-# parser.add_argument('--shard_num', type=int)
-# parser.add_argument('--zk_addr', type=str)
-# parser.add_argument('--zk_path', type=str)
-# parser.add_argument('--sampler_type', type=str, default="node")
-# parser.add_argument('--graph_type', type=str, default="compact")
-
-
+parser.add_argument('--shard_idx', type=int)
 args = parser.parse_args()
 
-print args.integer
-
-
-euler.start_and_wait(directory, # graph data directory
-                     loader_type, # loader type
-                     hdfs_addr, # HDFS address
-                     hdfs_port, # HDFS port
-                     shard_idx, # shard idx
-                     shard_num, # shard number
-                     zk_addr, # Zookeeper address, ip:port
-                     zk_path, # Zookeeper path
-                     global_sampler_type, # global_sampler_type: all / node / edge / none, the default is node.
-                     graph_type, # graph type, compact / fast, the default is compact.
-                     server_thread_num # euler service thread number, the default is 4.
+euler.start_and_wait(directory = config.directory, # graph data directory
+                     loader_type = "Remote",
+                     hdfs_addr = config.hdfs_addr,
+                     shard_idx = args.shard_idx, # shard idx
+                     shard_num = config.shard_num, # shard number
+                     zk_addr = config.zk_addr, # Zookeeper address, ip:port
+                     zk_path = config.zk_path, # Zookeeper path
+                     graph_type = config.graph_type, # graph type, compact / fast, the default is compact.
+                     server_thread_num = config.server_thread_num # euler service thread number, the default is 4.
 )
