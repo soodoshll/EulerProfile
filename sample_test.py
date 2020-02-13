@@ -1,24 +1,21 @@
 import tf_euler
 import tensorflow as tf
 import config
+import time
+
 
 tf_euler.initialize_graph({'mode': 'Remote',
                            'zk_server': config.zk_addr,
                            'zk_path': config.zk_path})
 
-import time
-start_t = time.time()
-
-print "generate seed"
-seed = tf_euler.sample_node(
-  10, 
-  0
-) 
-
-with tf.Session() as sess:
-    output = sess.run(seed)
+def test_sample(seed_num, fanout, steps):
+  layers = [tf_euler.sample_node(seed_num, 0)]
+  for i in range(steps):
+    layers.append(tf_euler.sample_node_with_src(layers[-1], fanout))
+  with tf.Session() as sess:
+    start_t = time.time()
+    output = sess.run(layers)
     print output
+    print "time: ", time.time() - start_t
 
-
-print "duration:", time.time() - start_t
-
+test_sample(2,2,2)
