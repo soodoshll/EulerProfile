@@ -15,7 +15,8 @@ def test_sample(seed_num, fanout, steps):
   with tf.Session() as sess:
     start_t = time.time()
     output = sess.run(layers)
-    print output
-    print "time: ", time.time() - start_t
+    # print outpu1t
+    consumed_time = time.time() - start_t
+    print "time: ", consumed_time
 
-test_sample(2,2,2)
+test_sample(2,2,10)

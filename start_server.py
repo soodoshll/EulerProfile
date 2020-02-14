@@ -4,13 +4,15 @@ import config
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--shard_idx', type=int)
+parser.add_argument('--shard_num', type=int)
+parser.add_argument('--directory', type=str)
 args = parser.parse_args()
 
-euler.start_and_wait(directory = config.directory, # graph data directory
+euler.start_and_wait(directory = args.directory, # graph data directory
                      loader_type = "Remote",
                      hdfs_addr = config.hdfs_addr,
                      shard_idx = args.shard_idx, # shard idx
-                     shard_num = config.shard_num, # shard number
+                     shard_num = args.shard_num, # shard number
                      zk_addr = config.zk_addr, # Zookeeper address, ip:port
                      zk_path = config.zk_path, # Zookeeper path
                      graph_type = config.graph_type, # graph type, compact / fast, the default is compact.
