@@ -9,4 +9,5 @@ worker_hosts = ["node1","node2"]
 
 experiment_dir = "/home/ubuntu/profile/"
 
+log_dir = "/home/ubuntu/log/"
 # server_script_path = ""

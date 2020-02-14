@@ -46,6 +46,9 @@ def worker_thread(ssh, worker_id):
   cmd = "bash -lc \"python " + script_path + "\""
   stdin, stdout, stderr = ssh.exec_command(cmd, get_pty = True)
   output = stdout.read()
+  err = stderr.read()
+  open(config.log_dir + "/out.worker." + str(worker_id), "w").write(output)
+  open(config.log_dir + "/err.worker." + str(worker_id), "w").write(err)
   # print output
   consumed_time[worker_id] = float(output.strip().split('\n')[-1].split(' ')[-1])
   worker_barrier.wait()
