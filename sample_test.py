@@ -8,6 +8,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--seed_num', type=int)
 parser.add_argument('--fanout', type=int)
 parser.add_argument('--steps', type=int)
+parser.add_argument('--mode', type=str)
 args = parser.parse_args()
 
 tf_euler.initialize_graph({'mode': 'Remote',
@@ -33,4 +34,19 @@ def test_sample(seed_num, fanout, steps):
     consumed_time = time.time() - start_t
     print "time: ", consumed_time
 
-test_sample(args.seed_num, args.fanout, args.steps)
+
+def test_sample_multihop(seed_num, fanout, steps):
+  layers = [tf_euler.sample_node(seed_num, 0)]
+  layers.append(tf_euler.sample_fanout(layers[-1], [[0]]*steps, [fanout]*steps))
+  # layers.append(sample_and_flatten(layers[-1], fanout))
+  with tf.Session() as sess:
+    start_t = time.time()
+    output = sess.run(layers)
+    print output
+    consumed_time = time.time() - start_t
+    print "time: ", consumed_time
+
+if args.mode == "multihop":
+  test_sample_multihop(args.seed_num, args.fanout, args.steps)
+else:
+  test_sample(args.seed_num, args.fanout, args.steps)
