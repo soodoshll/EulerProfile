@@ -1,34 +1,53 @@
+# Copyright 2018 Alibaba Group Holding Limited. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import json
 import os
-from euler.tools import json2dat
 import random
-import argparse
+import sys
+import subprocess
+import urllib
+import zipfile
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--mode', type=str, default='random')
-parser.add_argument('--prefix', type=str)
-parser.add_argument('--dest_prefix', type=str)
-parser.add_argument('--num', type=int, default=4)
-args = parser.parse_args()
+import networkx as nx
+import numpy as np
+import nxmetis
 
-def random_partition(prefix, dest_prefix, num):
-    output_file = [open(dest_prefix + "_data_" + str(i) + ".json", "w") for i in range(num)]
-    data_path = prefix + "_data.json"
-    cnt = 0
-    with open(data_path, "r") as f:
-        for line in f:
-            rand_part = random.randint(0, num - 1)
-            output_file[rand_part].write(line)
-            cnt += 1
-    del output_file
+from networkx.readwrite import json_graph
+import scipy.sparse as sp
 
-    for i in range(num):
-        print "converting:", i
-        c = json2dat.Converter(prefix + '_meta.json', dest_prefix + '_data_%d.json'%i,
-                        dest_prefix + '_data_%d.dat'%i)
-        c.do()
+def load_data(prefix, load_walks=False):
+  coo_adj = sp.load_npz(prefix + 'reddit_self_loop_graph.npz')
+  G = nx.from_scipy_sparse_matrix(coo_adj)
+  for i in G.nodes():
+      print(i)
+  return G
 
-if args.mode == 'metis':
-    pass 
-else:
-    random_partition(args.prefix, args.dest_prefix, args.num)
+if __name__ == '__main__':
+  prefix = 'reddit/'
+  dest_prefix = 'reddit/metis'
+  partition_num = 8
+  G = load_data(prefix)
+#   result = nxmetis.partition(G, partition_num)
+#   print(result)
+#   for i in range(partition_num):
+    # print ("converting:", i)
+    # c = json2dat.Converter(dest_prefix + '_meta.json', dest_prefix + '_data_%d.json'%i,
+                    # dest_prefix + '_data_%d.dat'%i)
+    # c.do()

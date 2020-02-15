@@ -1,6 +1,7 @@
 ppi/
 reddit/
 data/
-log/
+log/*
+metisenv/
 
 *.pyc

@@ -6,15 +6,15 @@ import paramiko
 import os
 import utils
 
-directory="/data/ppi_random/"
-shard_num = 2
+directory="/data/reddit_random/"
 
 server_num = len(config.server_hosts)
-server_ssh = [paramiko.SSHClient() for host in config.server_hosts]
-for i in range(server_num):
-  ssh = server_ssh[i]
-  ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-  ssh.connect(config.server_hosts[i])
+shard_num = server_num
+# server_ssh = [paramiko.SSHClient() for host in config.server_hosts]
+# for i in range(server_num):
+#   ssh = server_ssh[i]
+#   ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+#   ssh.connect(config.server_hosts[i])
 
 worker_num = len(config.worker_hosts)
 worker_ssh = [paramiko.SSHClient() for host in config.worker_hosts]
@@ -23,8 +23,8 @@ for i in range(worker_num):
   ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
   ssh.connect(config.worker_hosts[i])
 
-start_barrier = utils.Barrier(server_num + 1)
-end_barrier = utils.Barrier(server_num + 1)
+# start_barrier = utils.Barrier(server_num + 1)
+# end_barrier = utils.Barrier(server_num + 1)
 
 worker_barrier = utils.Barrier(worker_num + 1)
 consumed_time = [0 for i in range(worker_num)]
@@ -32,8 +32,9 @@ consumed_time = [0 for i in range(worker_num)]
 def server_thread(ssh, host_name, shard_id):
   # print host_name
   script_path = os.path.join(config.experiment_dir, "start_server.py") 
-  cmd = "bash -lc \"python %s --shard_idx %d --shard_num %d --directory %s\""%(
-    script_path, shard_id, shard_num, directory
+  cmd = "bash -lc \"python %s --shard_idx %d --shard_num %d --directory %s > %s 2> %s\""%(
+    script_path, shard_id, shard_num, directory, config.log_dir + "/out.server." + str(host_name),
+    config.log_dir + "/err.server." + str(host_name)
   )
   stdin, stdout, stderr = ssh.exec_command(cmd, get_pty = True)
   start_barrier.wait()
@@ -43,27 +44,29 @@ def server_thread(ssh, host_name, shard_id):
 
 def worker_thread(ssh, worker_id):
   script_path = os.path.join(config.experiment_dir, "sample_test.py")
-  cmd = "bash -lc \"python " + script_path + "\""
+  cmd = "bash -lc \"python %s 2> %s\""%(
+    script_path,
+    config.log_dir + "/err.worker." + str(worker_id)
+  )
   stdin, stdout, stderr = ssh.exec_command(cmd, get_pty = True)
   output = stdout.read()
   err = stderr.read()
   open(config.log_dir + "/out.worker." + str(worker_id), "w").write(output)
-  open(config.log_dir + "/err.worker." + str(worker_id), "w").write(err)
   # print output
   consumed_time[worker_id] = float(output.strip().split('\n')[-1].split(' ')[-1])
   worker_barrier.wait()
 
-server_threads = []
-for i in range(server_num):
-  ssh = server_ssh[i]
-  t = threading.Thread(target=server_thread, args=(ssh, config.server_hosts[i], i))
-  server_threads.append(t)
-  t.start()
+# server_threads = []
+# for i in range(server_num):
+#   ssh = server_ssh[i]
+#   t = threading.Thread(target=server_thread, args=(ssh, config.server_hosts[i], i))
+#   server_threads.append(t)
+#   t.start()
 
-print "start servers"
-start_barrier.wait()
-print "servers started"
-time.sleep(2)
+# print "start servers"
+# start_barrier.wait()
+# print "servers started"
+# time.sleep(5)
 print "start workers"
 
 for i in range(worker_num):
@@ -75,4 +78,4 @@ worker_barrier.wait()
 
 print "finish"
 print consumed_time
-end_barrier.wait()
+# end_barrier.wait()
