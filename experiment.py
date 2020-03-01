@@ -6,8 +6,6 @@ import paramiko
 import os
 import utils
 
-directory="/data/reddit_random/"
-
 server_num = len(config.server_hosts)
 shard_num = server_num
 # server_ssh = [paramiko.SSHClient() for host in config.server_hosts]

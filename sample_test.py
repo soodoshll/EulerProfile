@@ -10,12 +10,20 @@ parser = argparse.ArgumentParser()
 parser.add_argument('seed_num', type=int)
 parser.add_argument('fanout', type=int)
 parser.add_argument('steps', type=int)
-parser.add_argument('duration', type=float)
+parser.add_argument('-d', '--duration', type=float)
+parser.add_argument('-n', '--num', type=int)
 parser.add_argument('-l', '--local', action='store_true')
+parser.add_argument('-i', '--id', type=int, default=0)
+
 args = parser.parse_args()
+# NUM_NODES = 232965
+
+if not args.duration and not args.num:
+  print "at least one of -d or -n need to be specified."
+  exit()
 
 if args.local:
-  tf_euler.initialize_embedded_graph('reddit/48', graph_type='fast')
+  tf_euler.initialize_embedded_graph('reddit/48', graph_type='compact')
 else:
   tf_euler.initialize_graph({'mode': 'Remote',
                            'zk_server': config.zk_addr,
@@ -40,37 +48,42 @@ def test_sample(seed_num, fanout, steps):
     consumed_time = time.time() - start_t
     print "time: ", consumed_time
 
-NUM_NODES = 232965
-
-def get_seed(node_num, seed_num):
+def get_seed(node_id, seed_num):
   ptr = 0
-  data = range(0, node_num)
+  client_machine_num = len(config.worker_hosts)
+  data = []
+  partition_num = len(config.partition_nodes_num)
+  partition_per_machine = partition_num / client_machine_num
+  local_partition = [node_id + i * client_machine_num for i in range(partition_per_machine)]
+  for i in local_partition:
+    num = config.partition_nodes_num[i]
+    data += range(i, i + client_machine_num * num, client_machine_num)
   random.shuffle(data)
   while True:
-    if ptr + seed_num >= node_num:
+    if ptr + seed_num >= len(data):
       ptr = 0
-      print "set zero"
       random.shuffle(data)
     yield data[ptr : ptr + seed_num]
     ptr += seed_num
-    # yield data[:seed_num]
 
-def test_sample_multihop(seed_num, fanout, steps, duration):
+def test_sample_multihop(seed_num, fanout, steps, duration, node_id):
   seed_ph = tf.placeholder(tf.int64, shape=[seed_num])
   sample = tf_euler.sample_fanout(seed_ph, [[0]]*steps, [fanout]*steps)
   sample_num = 0
-  seed_generator = get_seed(NUM_NODES, seed_num)
+  seed_generator = get_seed(node_id, seed_num)
   with tf.Session() as sess:
     start_t = time.time()
     # edges_tot = 0
     consumed_time = 0
-    while time.time() - start_t < duration:
+    while (args.duration and time.time() - start_t < duration) or \
+          (args.num and sample_num < args.num):
       seed = seed_generator.next()
       start_t0 = time.time()
       output = sess.run(sample, feed_dict={seed_ph : seed})
       consumed_time += time.time() - start_t0
       # edges_tot += sum([len(x) for x in output[0][1:]])
       sample_num += 1
-    print consumed_time, sample_num, consumed_time / sample_num
+    # consumed_time += time.time() - start_t
+    print "result:", consumed_time, sample_num, consumed_time / sample_num
 
-test_sample_multihop(args.seed_num, args.fanout, args.steps, args.duration)
+test_sample_multihop(args.seed_num, args.fanout, args.steps, args.duration, args.id)
