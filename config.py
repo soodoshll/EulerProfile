@@ -6,8 +6,8 @@ server_thread_num = 48
 
 directory = "/data/reddit48/"
 
-server_hosts = ["node1"]
-worker_hosts = ["node1"]
+server_hosts = ["node1", "node2", "node3", "node4"]
+worker_hosts = ["node1", "node2", "node3", "node4"]
 
 experiment_dir = "/home/ubuntu/profile/"
 
