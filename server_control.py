@@ -17,6 +17,8 @@ seed_num = 1024
 fanout = 10
 steps = 2
 
+feats = True
+
 for i in range(server_num):
   ssh = server_ssh[i]
   ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -54,8 +56,9 @@ def wait_server(ssh, shard_ids):
 def test(ssh, node_ids):
   script_path = os.path.join(config.experiment_dir, "sample_test.py") 
   for i in range(clients_per_machine):
-    cmd = "bash -lc \"python %s %d %d %d -d %f -i %d > %s 2> %s &\""%(
+    cmd = "bash -lc \"python %s %d %d %d -d %f -i %d %s > %s 2> %s &\""%(
       script_path, seed_num, fanout, steps, duration, node_ids, 
+      "-f" if feats else "",
       config.log_dir + "/client.out." + str(i),
       config.log_dir + "/client.err." + str(i)
     )
