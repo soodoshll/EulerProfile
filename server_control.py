@@ -23,7 +23,7 @@ for i in range(server_num):
   ssh.connect(config.server_hosts[i])
 
 def stop_server(ssh):
-  cmd = "rm %s/server* ; pkill -f -9 start_server.py"%(config.log_dir)
+  cmd = "rm %s/server* ; pkill -f -9 start_server.py ; pkill -f -9 sample_test.py"%(config.log_dir)
   stdin, stdout, stderr = ssh.exec_command(cmd)
   result = stdout.read()
 
@@ -92,7 +92,8 @@ else:
     ssh = client_ssh[i]
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.connect(config.server_hosts[i])
-    ssh.exec_command("rm %s/client* ; pkill -f -9 sample_test.py"%(config.log_dir))
+    stdin, stdout, stderr = ssh.exec_command("rm %s/client* ; pkill -f -9 sample_test.py"%(config.log_dir))
+    result = stdout.read()
   
   client_thread = [threading.Thread(target=test, args=(client_ssh[i], i)) for i in range(client_num)]
   for t in client_thread:
@@ -100,11 +101,13 @@ else:
   
   time.sleep(2)
   print "waiting for results"
+  result_all = []
   for i in range(client_num):
     machine_name = config.worker_hosts[i]
     result = wait_client(client_ssh[i])
     result = [float(x.strip().split(" ")[-1]) for x in result]
     print machine_name, sum(result)/len(result)
-
+    result_all.append(sum(result)/len(result))
+  print "average:", sum(result_all)/len(result_all)
   for t in client_thread:
     t.join()

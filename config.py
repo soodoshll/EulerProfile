@@ -9,6 +9,9 @@ directory = "/data/reddit48/"
 server_hosts = ["node1", "node2", "node3", "node4"]
 worker_hosts = ["node1", "node2", "node3", "node4"]
 
+# server_hosts = ["node1"]
+# worker_hosts = ["node1"]
+
 experiment_dir = "/home/ubuntu/profile/"
 
 log_dir = "/home/ubuntu/profile/log/"
@@ -21,5 +24,7 @@ partition_nodes_num_random = [4804, 4885, 4832, 4797, 4885, 4923, 4720,
 4834, 4907, 4940, 4852, 4940]
 
 partition_nodes_num_whole = [sum(partition_nodes_num_random)]
+
+partition_nodes_num_12 = [sum(partition_nodes_num_random[i:i+4]) for i in range(0, 48, 4)]
 
 partition_nodes_num = partition_nodes_num_random

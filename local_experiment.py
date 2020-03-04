@@ -5,7 +5,7 @@ import time
 import os
 import config 
 
-worker_num = 1
+worker_num = 12
 server_num = 12
 duration = 20
 local = False

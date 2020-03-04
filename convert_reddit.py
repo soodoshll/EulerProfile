@@ -151,8 +151,8 @@ if __name__ == '__main__':
   #  ppi_zip.extractall()
 
   prefix = 'reddit/reddit'
-  dest_prefix = "reddit/12/reddit_12"
-  partition_num = 12
+  dest_prefix = "reddit/192/reddit_192"
+  partition_num = 192
   convert_data(prefix, dest_prefix, partition_num)
   for i in range(partition_num):
     print ("converting:", i)

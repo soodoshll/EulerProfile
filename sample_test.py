@@ -13,6 +13,7 @@ parser.add_argument('steps', type=int)
 parser.add_argument('-d', '--duration', type=float)
 parser.add_argument('-n', '--num', type=int)
 parser.add_argument('-l', '--local', action='store_true')
+parser.add_argument('-f', '--feature', action='store_true')
 parser.add_argument('-i', '--id', type=int, default=0)
 
 args = parser.parse_args()
@@ -58,6 +59,7 @@ def get_seed(node_id, seed_num):
   for i in local_partition:
     num = config.partition_nodes_num[i]
     data += range(i, i + client_machine_num * num, client_machine_num)
+  # print len(data)
   random.shuffle(data)
   while True:
     if ptr + seed_num >= len(data):
@@ -69,6 +71,9 @@ def get_seed(node_id, seed_num):
 def test_sample_multihop(seed_num, fanout, steps, duration, node_id):
   seed_ph = tf.placeholder(tf.int64, shape=[seed_num])
   sample = tf_euler.sample_fanout(seed_ph, [[0]]*steps, [fanout]*steps)
+  node_concat = tf.concat(sample[0], axis=-1)
+  feats = tf_euler.get_dense_feature(node_concat, [1], [602])
+  
   sample_num = 0
   seed_generator = get_seed(node_id, seed_num)
   with tf.Session() as sess:
@@ -79,9 +84,17 @@ def test_sample_multihop(seed_num, fanout, steps, duration, node_id):
           (args.num and sample_num < args.num):
       seed = seed_generator.next()
       start_t0 = time.time()
-      output = sess.run(sample, feed_dict={seed_ph : seed})
+      if args.feature:
+        output = sess.run([sample, feats], feed_dict={seed_ph : seed})
+      else:
+        output = sess.run([sample], feed_dict={seed_ph : seed})
       consumed_time += time.time() - start_t0
       # edges_tot += sum([len(x) for x in output[0][1:]])
+      # first_layer = output[0][1]
+      # s = set()
+      # for x in first_layer:
+        # s.add(x)
+      # print len(s)
       sample_num += 1
     # consumed_time += time.time() - start_t
     print "result:", consumed_time, sample_num, consumed_time / sample_num

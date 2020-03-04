@@ -1,17 +1,4 @@
-# Copyright 2018 Alibaba Group Holding Limited. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+# Using python3
 
 from __future__ import absolute_import
 from __future__ import division
@@ -31,20 +18,41 @@ import nxmetis
 
 from networkx.readwrite import json_graph
 import scipy.sparse as sp
-
+import pickle
 def load_data(prefix, load_walks=False):
   coo_adj = sp.load_npz(prefix + 'reddit_self_loop_graph.npz')
   G = nx.from_scipy_sparse_matrix(coo_adj)
-  for i in G.nodes():
-      print(i)
   return G
 
 if __name__ == '__main__':
   prefix = 'reddit/'
-  dest_prefix = 'reddit/metis'
-  partition_num = 8
-  G = load_data(prefix)
-#   result = nxmetis.partition(G, partition_num)
+  output_file = 'reddit-metis-4.pkl'
+  partition_num = 4
+  # with open(output_file, "wb") as f:
+  #   G = load_data(prefix)
+  #   result = nxmetis.partition(G, partition_num)
+  #   pickle.dump(result, f, protocol=2)
+  
+  refine_file = 'reddit-metis-4-12.pkl'
+  refine_num = 12
+  with open(output_file, "rb") as f:
+    partition = pickle.load(f)[1]
+  print(len(partition[0]))
+  refine_per_part = [len(x)//refine_num for x in partition]
+  refine = []
+  for part in partition:
+    random.shuffle(part)
+  for i in range(refine_num):
+    for j in range(partition_num):
+      n = refine_per_part[j]
+      if i == refine_num - 1:
+        refine.append(partition[j][i*n : ])
+      else:
+        refine.append(partition[j][i*n : (i+1)*n])
+  print ([len(x) for x in partition])
+  print ([len(x) for x in refine])
+  with open(refine_file, "wb") as f:
+    pickle.dump(refine, f, protocol=2)
 #   print(result)
 #   for i in range(partition_num):
     # print ("converting:", i)
