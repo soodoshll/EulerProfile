@@ -70,25 +70,33 @@ def get_seed(node_id, seed_num):
 
 def test_sample_multihop(seed_num, fanout, steps, duration, node_id):
   seed_ph = tf.placeholder(tf.int64, shape=[seed_num])
-  sample = tf_euler.sample_fanout(seed_ph, [[0]]*steps, [fanout]*steps)
-  node_concat = tf.concat(sample[0], axis=-1)
-  feats = tf_euler.get_dense_feature(node_concat, [1], [602])
+  feats = [tf_euler.get_dense_feature(seed_ph, [1], [602])]
+  samples = [seed_ph]
+  for i in range(steps):
+    seed = tf.unique(samples[-1])[0]
+    sample = sample_and_flatten(seed, fanout)
+    samples.append(sample)
+    feats.append(tf_euler.get_dense_feature(sample, [1], [602]))
   
   sample_num = 0
   seed_generator = get_seed(node_id, seed_num)
   with tf.Session() as sess:
     start_t = time.time()
-    # edges_tot = 0
+    edges_tot = 0
     consumed_time = 0
+    total_nodes = 0
     while (args.duration and time.time() - start_t < duration) or \
           (args.num and sample_num < args.num):
       seed = seed_generator.next()
       start_t0 = time.time()
       if args.feature:
-        output = sess.run([sample, feats], feed_dict={seed_ph : seed})
+        output = sess.run([samples, feats], feed_dict={seed_ph : seed})
       else:
-        output = sess.run([sample], feed_dict={seed_ph : seed})
+        output = sess.run([samples], feed_dict={seed_ph : seed})
+      edges_tot += sum(len(x) for x in output[0][1:])
+      # total_nodes += sum([len(x) for x in output[0]])
       consumed_time += time.time() - start_t0
+      # print(len(output[0][-1]))
       # edges_tot += sum([len(x) for x in output[0][1:]])
       # first_layer = output[0][1]
       # s = set()
@@ -96,7 +104,7 @@ def test_sample_multihop(seed_num, fanout, steps, duration, node_id):
         # s.add(x)
       # print len(s)
       sample_num += 1
-    # consumed_time += time.time() - start_t
-    print "result:", consumed_time, sample_num, consumed_time / sample_num
-
+    # consumed_time = time.time() - start_t
+    # print "result:", consumed_time, sample_num, (total_nodes), consumed_time / sample_num
+    print "result:", consumed_time / sample_num, edges_tot / consumed_time / 1000
 test_sample_multihop(args.seed_num, args.fanout, args.steps, args.duration, args.id)

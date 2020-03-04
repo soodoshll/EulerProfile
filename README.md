@@ -8,6 +8,10 @@ This is some profiling script for the Euler graph computing system.
 1. Use `start_server.py` to start a server.  
 1. Use `sample_test.py` to run the test.
 
+### Distributed setting
+
+1. Run `python server_control.py start` to start servers.
+1. Run `python server_control.py` to run profiling.
 
 ### TODO
 

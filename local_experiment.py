@@ -6,20 +6,20 @@ import os
 import config 
 
 worker_num = 12
-server_num = 12
+server_num = 1
 duration = 20
 local = False
 duplicate = False
 server_err_prefix = "log/server.err."
 
-seed_num = 1024
+seed_num = 1000
 fanout = 10
-steps = 2
+steps = 4
 
-repeat = 6
+repeat = 3
 skip_first = True
 
-monitor_network = True
+feats = False
 
 if local:
   print "local worker:%d"%(worker_num)
@@ -54,25 +54,33 @@ def run():
   workers = []
   for i in range(worker_num):
     if local:
-      cmd = "python ./sample_test.py %d %d %d -d %f -l 2>log/worker.err.%d"%(
-        seed_num, fanout, steps, duration, i)
+      cmd = "python ./sample_test.py %d %d %d %s -d %f -l 2>log/worker.err.%d"%(
+        seed_num, fanout, steps, "-f" if feats else "", 
+        duration, i)
     else:
-      cmd = "python ./sample_test.py %d %d %d -d %f 2>log/worker.err.%d"%(
-        seed_num, fanout, steps, duration, i)
+      cmd = "python ./sample_test.py %d %d %d %s -d %f 2>log/worker.err.%d"%(
+        seed_num, fanout, steps, "-f" if feats else "",
+        duration, i)
     workers.append(subprocess.Popen(args=cmd, stdout=subprocess.PIPE, shell=True))
     # time.sleep(0.2)
 
   throughputs = []
+  node_num = 0
+  sample_num = 0
   for w in workers:
     output = w.communicate()[0]
-    print output
+    # print output
     output = output.split('\n')[-2]
     waiting_worker -= 1
     throughput = float(output.strip().split(' ')[-1])
     throughputs.append(throughput)
+    # node_num += float(output.strip().split(' ')[-2])
+    # sample_num += int(output.strip().split(' ')[-3])
 
   cm.join()
-  return sum(throughputs) / worker_num, max(cpu_usage)
+  return sum(throughputs) 
+  # / worker_num
+  # , max(cpu_usage), node_num, sample_num
 
 if local:
   os.system("pkill -9 local_graph_test -f")
@@ -100,16 +108,21 @@ else:
   time.sleep(5)
 
 t_log = []
-c_log = []
+# c_log = []
+# nn_tt = 0
+# sn_tt = 0
 for i in range(repeat):
-  t, c = run()
-  print t, c
+  t = run()
+  print "#", i, "Tput:", t
+  # print t, c
   if i > 0 or not skip_first:
     t_log.append(t)
-    c_log.append(c)
+    # c_log.append(c)
+    # nn_tt += nn
+    # sn_tt += sn
 
 if repeat > 1:
-  print "avg:", sum(t_log) / len(t_log), sum(c_log) / len(c_log)
+  print "avg Tput(KETPS):", sum(t_log) / len(t_log)
 
 if not local:
   os.system("pkill -9 start_server -f")

@@ -17,7 +17,7 @@ seed_num = 1024
 fanout = 10
 steps = 2
 
-feats = True
+feats = False
 
 for i in range(server_num):
   ssh = server_ssh[i]
@@ -105,12 +105,17 @@ else:
   time.sleep(2)
   print "waiting for results"
   result_all = []
+  num_sampled_nodes = 0
+  num_samples = 0
   for i in range(client_num):
     machine_name = config.worker_hosts[i]
     result = wait_client(client_ssh[i])
-    result = [float(x.strip().split(" ")[-1]) for x in result]
-    print machine_name, sum(result)/len(result)
-    result_all.append(sum(result)/len(result))
-  print "average:", sum(result_all)/len(result_all)
+    result_time = [float(x.strip().split(" ")[-1]) for x in result]
+    num_sampled_nodes += sum([float(x.strip().split(" ")[-2]) for x in result])
+    num_samples += sum([int(x.strip().split(" ")[-3]) for x in result])
+    print machine_name, sum(result_time)/len(result_time)
+    result_all.append(sum(result_time)/len(result_time))
+  print "average:", sum(result_all)/len(result_all), "ms"\
+        "#sampled nodes:", num_sampled_nodes/num_samples
   for t in client_thread:
     t.join()

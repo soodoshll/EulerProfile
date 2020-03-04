@@ -4,13 +4,12 @@ zk_path = "/euler"
 graph_type = "fast"
 server_thread_num = 12
 
-directory = "/data/reddit-metis/"
 
 server_hosts = ["node1", "node2", "node3", "node4"]
 worker_hosts = ["node1", "node2", "node3", "node4"]
 
-# server_hosts = ["node1"]
-# worker_hosts = ["node1"]
+server_hosts = ["node1"]
+worker_hosts = ["node1"]
 
 experiment_dir = "/home/ubuntu/profile/"
 
@@ -32,4 +31,8 @@ partition_nodes_num_metis = [4730, 4999, 4711, 4972, 4730, 4999, 4711,
 def partition_refine(partition, num):
   return [sum(partition[i:i+num]) for i in range(0, 48, num)]
 
-partition_nodes_num = partition_refine(partition_nodes_num_metis, 1)
+# directory = "/data/reddit-metis/"
+# partition_nodes_num = partition_refine(partition_nodes_num_metis, 1)
+
+directory = "/data/reddit48/"
+partition_nodes_num = partition_refine(partition_nodes_num_random, 6)

@@ -3,7 +3,9 @@ tmp/
 reddit/
 data/
 log/*
+dgl/
 metisenv/
+dgl_reddit_mp.py
 
 *.pyc
 *.pkl
