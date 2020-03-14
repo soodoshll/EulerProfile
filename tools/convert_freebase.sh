@@ -1,0 +1,1 @@
+./convert_freebase ../freebase/valid.txt ../freebase/random/freebase 96

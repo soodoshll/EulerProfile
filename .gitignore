@@ -6,6 +6,8 @@ log/*
 dgl/
 freebase/
 metisenv/
+tools/build/
+tools/convert_freebase
 dgl_reddit_mp.py
 
 *.pyc
