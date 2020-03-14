@@ -37,7 +37,7 @@ bool load_triple(std::vector<triple> &buf, AdjList &adj_list, const char *fn) {
 
 const size_t node_num = 86054151;
 const size_t feat_dim = 100;
-const size_t feat_num = 100;
+const size_t feat_num = 1000;
 
 const size_t edge_type_num = 1;
 
@@ -68,7 +68,7 @@ int main(const int argc, const char ** argv) {
   float feat_pool[feat_num][feat_dim];
   for (size_t i = 0 ; i < feat_num ; ++i) {
     for (size_t j = 0 ; j < feat_dim ; ++j)
-      feat_pool[i][j] = (float)rand() / RAND_MAX;
+      feat_pool[i][j] = 1.0 * rand() / RAND_MAX;
   }
 
   // Open files
@@ -81,8 +81,13 @@ int main(const int argc, const char ** argv) {
   std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
 
   size_t cnt = 0;
-  #pragma omp parallel for
-  for (size_t i = 0 ; i < node_num ; ++i) {
+  #pragma omp parallel 
+  {
+  size_t p_id = omp_get_thread_num();
+  auto &fd = out_fd[p_id];
+  for (size_t i = p_id ; 
+       i < p_id + partition_num * partition_nodes[p_id].size() && i < node_num;
+       i += partition_num) {
     Document root;
     root.SetObject();
     auto &allocator = root.GetAllocator();
@@ -119,7 +124,7 @@ int main(const int argc, const char ** argv) {
 
     Value featValue(kArrayType);
     // generate feat
-    size_t f_id = rand() & feat_num;
+    size_t f_id = rand() % feat_num;
     const auto &feat = feat_pool[f_id];
     for (size_t j = 0 ; j < feat_dim ; ++j) {
       // featValue.PushBack((float)rand() / RAND_MAX, allocator);
@@ -129,7 +134,7 @@ int main(const int argc, const char ** argv) {
     root.AddMember("float_feature", floatValue, allocator);
 
     Value boolValue(kObjectType);
-    root.AddMember("binary_feature", floatValue, allocator);
+    root.AddMember("binary_feature", boolValue, allocator);
 
     Value edgesValue(kArrayType);
     for (const auto &edge:adj_list[i]) {
@@ -148,22 +153,24 @@ int main(const int argc, const char ** argv) {
 
     StringBuffer buffer;
     Writer<StringBuffer> writer(buffer);
+    writer.SetMaxDecimalPlaces(6);
     root.Accept(writer);
     auto out = buffer.GetString();
-    auto &fd = out_fd[partition_map[i]];
+    fputs(out, fd);
+    fputs("\n", fd);
+    fflush(fd);
     #pragma omp critical
     {
-      ++cnt;
-      if (cnt % 100000 == 0) {
-        std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
-        std::chrono::duration<double> time_used = 
-          std::chrono::duration_cast<std::chrono::duration<double>>(time_end-time_start);
-        time_start = std::chrono::steady_clock::now();
-        std::cout << "#" << cnt << " time use:" << time_used.count() << "s" <<std::endl;
-      }
-      fputs(out, fd);
-      fputs("\n", fd);
+    ++cnt;
+    if (cnt % 100000 == 0) {
+      std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
+      std::chrono::duration<double> time_used = 
+        std::chrono::duration_cast<std::chrono::duration<double>>(time_end-time_start);
+      time_start = std::chrono::steady_clock::now();
+      std::cout << "#" << cnt << " time use:" << time_used.count() << "s" <<std::endl;
     }
+    }
+  }
   }
 
 

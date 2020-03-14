@@ -1,1 +1,1 @@
-./convert_freebase ../freebase/valid.txt ../freebase/random/freebase 96
+./convert_freebase ../freebase/train.txt ../freebase/random/freebase 96
