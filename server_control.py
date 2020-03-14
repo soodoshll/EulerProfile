@@ -6,18 +6,11 @@ import paramiko
 import os
 import utils
 
+import argparse
+
 server_num = len(config.server_hosts)
-shard_num = len(config.partition_nodes_num)
 server_ssh = [paramiko.SSHClient() for host in config.server_hosts]
 
-duration = 30
-clients_per_machine = 12
-
-seed_num = 1024
-fanout = 10
-steps = 2
-
-feats = False
 
 for i in range(server_num):
   ssh = server_ssh[i]
@@ -29,14 +22,14 @@ def stop_server(ssh):
   stdin, stdout, stderr = ssh.exec_command(cmd)
   result = stdout.read()
 
-def start_server(ssh, host_name, shard_ids):
+def start_server(ssh, host_name, shard_ids, directory):
   stop_server(ssh)
   time.sleep(5)
   script_path = os.path.join(config.experiment_dir, "start_server.py") 
   for shard_id in shard_ids:
     print "starting server", shard_id
     cmd = "bash -lc \"python %s --shard_idx %d --shard_num %d --directory %s > %s 2> %s &\""%(
-      script_path, shard_id, shard_num, config.directory, 
+      script_path, shard_id, shard_num, directory, 
       config.log_dir + "/server.out." + str(shard_id),
       config.log_dir + "/server.err." + str(shard_id)
     )
@@ -53,15 +46,16 @@ def wait_server(ssh, shard_ids):
       stdin, stdout, stderr = ssh.exec_command(cmd)
       result = stdout.read()
 
-def test(ssh, node_ids):
+def test(ssh, seed_num, fanout, steps, duration, partition, feats, node_ids):
   script_path = os.path.join(config.experiment_dir, "sample_test.py") 
-  for i in range(clients_per_machine):
-    cmd = "bash -lc \"python %s %d %d %d -d %f -i %d %s > %s 2> %s &\""%(
+  for i in range(args.clients_per_machine):
+    cmd = "bash -lc \"python %s %d %d %d -d %f -i %d %s -p %s -m %d > %s 2> %s &\""%(
       script_path, seed_num, fanout, steps, duration, node_ids, 
-      "-f" if feats else "",
+      "-f" if feats else "", partition, len(config.worker_hosts),
       config.log_dir + "/client.out." + str(i),
       config.log_dir + "/client.err." + str(i)
     )
+    # print cmd
     # time.sleep(0.1)
     # cmd = "ls"
     stdin, stdout, stderr = ssh.exec_command(cmd)
@@ -69,7 +63,7 @@ def test(ssh, node_ids):
 
 def wait_client(ssh):
   results = []
-  for i in range(clients_per_machine):
+  for i in range(args.clients_per_machine):
     result = ""
     while result.find("result") < 0:
       cmd = "tail -n 1 %s/client.out.%d"%(config.log_dir, i)
@@ -79,16 +73,36 @@ def wait_client(ssh):
   return results
 
 import sys 
-if len(sys.argv) > 1 and sys.argv[1] == 'start':
+
+parser = argparse.ArgumentParser()
+parser.add_argument('command', type=str)
+parser.add_argument('-p', '--partition', type=str, default="random")
+parser.add_argument('-t', '--thread_num', type=int, default=12)
+
+parser.add_argument('-s', '--seed_num', type=int, default=1000)
+parser.add_argument('-F', '--fanout', type=int, default=10)
+parser.add_argument('-S', '--steps', type=int, default=2)
+parser.add_argument('-d', '--duration', type=float, default=20)
+parser.add_argument('-f', '--feature', action='store_true')
+parser.add_argument('-c', '--clients_per_machine', type=int, default=12)
+args = parser.parse_args()
+
+if args.command=='start':
+  thread_num = args.thread_num
+  partition = args.partition
+  directory = config.partition_config[partition]['directory']
+  partition_nodes_num = config.partition_config[partition]['partition']
+  shard_num = len(partition_nodes_num)
   partition_num_per_machine = shard_num / server_num
   for server_id in range(server_num):
+    print shard_num, server_num, partition_num_per_machine
     partitions = [server_id + i * server_num for i in range(partition_num_per_machine)]
-    start_server(server_ssh[server_id], config.server_hosts[server_id], partitions)
+    start_server(server_ssh[server_id], config.server_hosts[server_id], partitions, directory)
     wait_server(server_ssh[server_id], partitions)
-elif len(sys.argv) > 1 and sys.argv[1] == 'stop':
+elif args.command=='stop':
   for i in server_ssh:
     stop_server(i)
-else:
+elif args.command=='test':
   client_num = len(config.worker_hosts)
   client_ssh = [paramiko.SSHClient() for host in config.worker_hosts]
   for i in range(client_num):
@@ -97,8 +111,10 @@ else:
     ssh.connect(config.server_hosts[i])
     stdin, stdout, stderr = ssh.exec_command("rm %s/client* ; pkill -f -9 sample_test.py"%(config.log_dir))
     result = stdout.read()
-  
-  client_thread = [threading.Thread(target=test, args=(client_ssh[i], i)) for i in range(client_num)]
+  client_thread = [threading.Thread(target=test, 
+    args=(client_ssh[i], args.seed_num, args.fanout, args.steps, args.duration, args.partition,
+          args.feature, i)) 
+    for i in range(client_num)]
   for t in client_thread:
     t.start()
   
@@ -107,15 +123,18 @@ else:
   result_all = []
   num_sampled_nodes = 0
   num_samples = 0
+  dur_all = []
+  tput_all = []
   for i in range(client_num):
     machine_name = config.worker_hosts[i]
     result = wait_client(client_ssh[i])
-    result_time = [float(x.strip().split(" ")[-1]) for x in result]
-    num_sampled_nodes += sum([float(x.strip().split(" ")[-2]) for x in result])
-    num_samples += sum([int(x.strip().split(" ")[-3]) for x in result])
-    print machine_name, sum(result_time)/len(result_time)
-    result_all.append(sum(result_time)/len(result_time))
-  print "average:", sum(result_all)/len(result_all), "ms"\
-        "#sampled nodes:", num_sampled_nodes/num_samples
+    result_tput = [float(x.strip().split(" ")[-1]) for x in result]
+    result_time = [float(x.strip().split(" ")[-2]) for x in result]
+    print machine_name, sum(result_time)/len(result_time), sum(result_tput)
+    dur_all.append(sum(result_time)/len(result_time))
+    tput_all.append(sum(result_tput))
+
+  print "avg dur:", sum(dur_all)/len(dur_all), "ms"\
+        " | tput:", sum(tput_all)
   for t in client_thread:
     t.join()

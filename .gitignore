@@ -4,6 +4,7 @@ reddit/
 data/
 log/*
 dgl/
+freebase/
 metisenv/
 dgl_reddit_mp.py
 

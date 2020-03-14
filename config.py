@@ -2,14 +2,14 @@ hdfs_addr = "hdfs://node1:9000/"
 zk_addr = "node1:2181"
 zk_path = "/euler"
 graph_type = "fast"
-server_thread_num = 12
+# server_thread_num = 12
 
 
 server_hosts = ["node1", "node2", "node3", "node4"]
 worker_hosts = ["node1", "node2", "node3", "node4"]
 
-server_hosts = ["node1"]
-worker_hosts = ["node1"]
+# server_hosts = ["node1"]
+# worker_hosts = ["node1"]
 
 experiment_dir = "/home/ubuntu/profile/"
 
@@ -34,5 +34,19 @@ def partition_refine(partition, num):
 # directory = "/data/reddit-metis/"
 # partition_nodes_num = partition_refine(partition_nodes_num_metis, 1)
 
-directory = "/data/reddit48/"
-partition_nodes_num = partition_refine(partition_nodes_num_random, 6)
+# directory = "/data/reddit48/"
+# partition_nodes_num = partition_refine(partition_nodes_num_random, 1)
+
+partition_config = {}
+
+partition_config['local'] = {
+  "directory" : "/data/reddit48/",
+  "partition" : partition_refine(partition_nodes_num_random, 4)}
+
+partition_config['random'] = {
+  "directory" : "/data/reddit48/",
+  "partition" : partition_nodes_num_random}
+
+partition_config['metis'] = {
+  "directory" : "/data/reddit-metis/",
+  "partition" : partition_nodes_num_metis}

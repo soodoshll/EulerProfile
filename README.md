@@ -11,8 +11,20 @@ This is some profiling script for the Euler graph computing system.
 ### Distributed setting
 
 1. Run `python server_control.py start` to start servers.
-1. Run `python server_control.py` to run profiling.
+1. Run `python server_control.py test` to run profiling.
+1. Run `python server_control.py stop` to stop servers.
 
-### TODO
+**local experiment**
 
-1. Run metis partition before converting
+1. `python server_control.py start -p local` to start server processes.
+1. `python server_control.py test -p local` to run profiling.
+
+**metis partition**
+
+1. `python server_control.py start -p metis` to start server processes.
+1. `python server_control.py test -p metis` to run profiling.
+
+### Partition
+
+- See `partition.py`
+- It has to be run under python3 environment with networkx-metis.

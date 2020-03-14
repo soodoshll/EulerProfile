@@ -15,9 +15,13 @@ parser.add_argument('-n', '--num', type=int)
 parser.add_argument('-l', '--local', action='store_true')
 parser.add_argument('-f', '--feature', action='store_true')
 parser.add_argument('-i', '--id', type=int, default=0)
+parser.add_argument('-p', '--partition', type=str, default="random")
+parser.add_argument('-m', '--machine_num', type=int, default=1)
 
 args = parser.parse_args()
 # NUM_NODES = 232965
+client_machine_num = args.machine_num
+partition_nodes_num = config.partition_config[args.partition]['partition']
 
 if not args.duration and not args.num:
   print "at least one of -d or -n need to be specified."
@@ -51,13 +55,12 @@ def test_sample(seed_num, fanout, steps):
 
 def get_seed(node_id, seed_num):
   ptr = 0
-  client_machine_num = len(config.worker_hosts)
   data = []
-  partition_num = len(config.partition_nodes_num)
+  partition_num = len(partition_nodes_num)
   partition_per_machine = partition_num / client_machine_num
   local_partition = [node_id + i * client_machine_num for i in range(partition_per_machine)]
   for i in local_partition:
-    num = config.partition_nodes_num[i]
+    num = partition_nodes_num[i]
     data += range(i, i + client_machine_num * num, client_machine_num)
   # print len(data)
   random.shuffle(data)
@@ -72,11 +75,14 @@ def test_sample_multihop(seed_num, fanout, steps, duration, node_id):
   seed_ph = tf.placeholder(tf.int64, shape=[seed_num])
   feats = [tf_euler.get_dense_feature(seed_ph, [1], [602])]
   samples = [seed_ph]
+  samples_uniqued = [tf.unique(seed_ph)[0]]
   for i in range(steps):
-    seed = tf.unique(samples[-1])[0]
+    seed = tf.unique(samples_uniqued[-1])[0]
     sample = sample_and_flatten(seed, fanout)
     samples.append(sample)
-    feats.append(tf_euler.get_dense_feature(sample, [1], [602]))
+    sample_unique = tf.unique(sample)[0]
+    samples_uniqued.append(sample_unique)
+    feats.append(tf_euler.get_dense_feature(sample_unique, [1], [602]))
   
   sample_num = 0
   seed_generator = get_seed(node_id, seed_num)
@@ -107,4 +113,5 @@ def test_sample_multihop(seed_num, fanout, steps, duration, node_id):
     # consumed_time = time.time() - start_t
     # print "result:", consumed_time, sample_num, (total_nodes), consumed_time / sample_num
     print "result:", consumed_time / sample_num, edges_tot / consumed_time / 1000
+
 test_sample_multihop(args.seed_num, args.fanout, args.steps, args.duration, args.id)

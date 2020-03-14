@@ -6,6 +6,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--shard_idx', type=int)
 parser.add_argument('--shard_num', type=int)
 parser.add_argument('--directory', type=str)
+parser.add_argument('--thread_num', type=int, default=12)
 args = parser.parse_args()
 
 euler.start_and_wait(directory = args.directory, # graph data directory
@@ -16,5 +17,5 @@ euler.start_and_wait(directory = args.directory, # graph data directory
                      zk_addr = config.zk_addr, # Zookeeper address, ip:port
                      zk_path = config.zk_path, # Zookeeper path
                      graph_type = config.graph_type, # graph type, compact / fast, the default is compact.
-                     server_thread_num = config.server_thread_num # euler service thread number, the default is 4.
+                     server_thread_num = args.thread_num # euler service thread number, the default is 4.
 )
