@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--shard_idx', type=int)
 parser.add_argument('--shard_num', type=int)
 parser.add_argument('--directory', type=str)
-parser.add_argument('--thread_num', type=int, default=12)
+parser.add_argument('--thread_num', type=int, default=48)
 args = parser.parse_args()
 
 euler.start_and_wait(directory = args.directory, # graph data directory

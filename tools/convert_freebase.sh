@@ -1,1 +1,1 @@
-./convert_freebase ../freebase/train.txt ../freebase/random/freebase 96
+./convert_freebase ../freebase/train.txt ../freebase/metis/freebase ../freebase/metis.graph.part.8 8 12

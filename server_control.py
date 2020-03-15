@@ -22,14 +22,15 @@ def stop_server(ssh):
   stdin, stdout, stderr = ssh.exec_command(cmd)
   result = stdout.read()
 
-def start_server(ssh, host_name, shard_ids, directory):
+def start_server(ssh, host_name, shard_ids, directory, thread):
   stop_server(ssh)
   time.sleep(5)
   script_path = os.path.join(config.experiment_dir, "start_server.py") 
+  print "starting server", host_name
   for shard_id in shard_ids:
-    print "starting server", shard_id
-    cmd = "bash -lc \"python %s --shard_idx %d --shard_num %d --directory %s > %s 2> %s &\""%(
-      script_path, shard_id, shard_num, directory, 
+    # print "starting server", shard_id
+    cmd = "bash -lc \"python %s --shard_idx %d --shard_num %d --directory %s --thread_num %d > %s 2> %s &\""%(
+      script_path, shard_id, shard_num, directory, thread, 
       config.log_dir + "/server.out." + str(shard_id),
       config.log_dir + "/server.err." + str(shard_id)
     )
@@ -38,8 +39,8 @@ def start_server(ssh, host_name, shard_ids, directory):
     # result = stdout.read()
 
 def wait_server(ssh, shard_ids):
+  print "waiting..."
   for shard_id in shard_ids:
-    print "waiting server", shard_id
     result = ""
     while result.find("service start") < 0:
       cmd = "tail -n 1 %s/server.err.%d"%(config.log_dir, shard_id)
@@ -51,7 +52,7 @@ def test(ssh, seed_num, fanout, steps, duration, partition, feats, node_ids):
   for i in range(args.clients_per_machine):
     cmd = "bash -lc \"python %s %d %d %d -d %f -i %d %s -p %s -m %d > %s 2> %s &\""%(
       script_path, seed_num, fanout, steps, duration, node_ids, 
-      "-f" if feats else "", partition, len(config.worker_hosts),
+      "-f " + str(feats) if feats else "", partition, len(config.worker_hosts), 
       config.log_dir + "/client.out." + str(i),
       config.log_dir + "/client.err." + str(i)
     )
@@ -69,22 +70,35 @@ def wait_client(ssh):
       cmd = "tail -n 1 %s/client.out.%d"%(config.log_dir, i)
       stdin, stdout, stderr = ssh.exec_command(cmd)
       result = stdout.read()
+      time.sleep(0.5)
     results.append(result)
   return results
+
+def start_and_wait(server_id, partitions, directory, thread):
+  try:
+    start_server(server_ssh[server_id], config.server_hosts[server_id], partitions, directory, thread)
+    wait_server(server_ssh[server_id], partitions)
+  except paramiko.ssh_exception.ChannelException:
+    print "retrying..."
+    server_ssh[server_id] = paramiko.SSHClient()
+    server_ssh[server_id].set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    server_ssh[server_id].connect(config.server_hosts[server_id])
+    start_and_wait(server_id, partitions, directory, thread)
 
 import sys 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('command', type=str)
 parser.add_argument('-p', '--partition', type=str, default="random")
-parser.add_argument('-t', '--thread_num', type=int, default=12)
+parser.add_argument('-t', '--thread_num', type=int, default=48)
 
 parser.add_argument('-s', '--seed_num', type=int, default=1000)
 parser.add_argument('-F', '--fanout', type=int, default=10)
 parser.add_argument('-S', '--steps', type=int, default=2)
 parser.add_argument('-d', '--duration', type=float, default=20)
-parser.add_argument('-f', '--feature', action='store_true')
+parser.add_argument('-f', '--feature', type=int, default=None)
 parser.add_argument('-c', '--clients_per_machine', type=int, default=12)
+
 args = parser.parse_args()
 
 if args.command=='start':
@@ -97,8 +111,7 @@ if args.command=='start':
   for server_id in range(server_num):
     print shard_num, server_num, partition_num_per_machine
     partitions = [server_id + i * server_num for i in range(partition_num_per_machine)]
-    start_server(server_ssh[server_id], config.server_hosts[server_id], partitions, directory)
-    wait_server(server_ssh[server_id], partitions)
+    start_and_wait(server_id, partitions, directory, thread_num)
 elif args.command=='stop':
   for i in server_ssh:
     stop_server(i)

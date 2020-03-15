@@ -8,6 +8,7 @@ freebase/
 metisenv/
 tools/build/
 tools/convert_freebase
+tools/freebase2metis
 dgl_reddit_mp.py
 
 *.pyc

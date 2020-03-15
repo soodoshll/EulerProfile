@@ -42,12 +42,44 @@ const size_t feat_num = 1000;
 const size_t edge_type_num = 1;
 
 int main(const int argc, const char ** argv) {
-  assert(argc >= 4);
+  assert(argc >= 6);
   const char *src_path = argv[1];
   const char *dest_path = argv[2];
-  const size_t partition_num = std::atoi(argv[3]);
+  const char *part_path = argv[3];
+
+  const size_t part_num = std::atoi(argv[4]);
+  const size_t part_per_machine = std::atoi(argv[5]);
+
+  const size_t partition_num = part_num * part_per_machine;
   std::cout << "Converting " << src_path << " to " << dest_path << " parition:" 
-            << partition_num << std::endl;
+            << part_num << "*" << part_per_machine << std::endl;
+
+  // reading partition info
+  std::vector<size_t> part_ptr(part_num);
+  std::vector<size_t> part_map;
+  std::vector<size_t> id_map;
+  std::vector<std::vector<size_t>> part_node(partition_num);
+  FILE *part_f = fopen(part_path, "r");
+  for (size_t i = 0 ; i < node_num ; ++i) {
+    size_t pid_raw;
+    fscanf(part_f, "%ld", &pid_raw);
+    size_t pid = (part_ptr[pid_raw] % part_per_machine) * part_num + pid_raw;
+    ++part_ptr[pid_raw];
+
+    part_map.push_back(pid);
+    id_map.push_back(part_node[pid].size() *  partition_num + pid);
+    part_node[pid].push_back(i);
+  }
+  std::cout << "Partition info reading finish" << std::endl;
+  std::string part_info_path = std::string(dest_path) + "_part.txt";
+  std::cout << part_info_path << std::endl;
+  FILE *part_out = fopen(part_info_path.c_str(), "w");
+  fputs("[", part_out);
+  for (const auto &part : part_node) {
+    fprintf(part_out, "%ld, ", part.size());
+  }
+  fputs("]\n", part_out);
+  fclose(part_out);
 
   srand(time(0));
   std::vector<triple> data;
@@ -55,15 +87,6 @@ int main(const int argc, const char ** argv) {
 
   load_triple(data, adj_list, src_path);
   std::cout << "Data loaded " << data.size() << " triples " << std::endl;
-
-  std::vector<size_t> partition_map(node_num);
-  std::vector<std::vector<size_t>> partition_nodes(partition_num);
-  for (size_t i = 0 ; i < node_num ; ++i) {
-    size_t pid = i % partition_num;
-    partition_map[i] = pid;
-    partition_nodes[pid].emplace_back(i);
-  }
-  std::cout << "Random partition finished" << std::endl;
 
   float feat_pool[feat_num][feat_dim];
   for (size_t i = 0 ; i < feat_num ; ++i) {
@@ -81,17 +104,16 @@ int main(const int argc, const char ** argv) {
   std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
 
   size_t cnt = 0;
+  omp_set_num_threads(partition_num);
   #pragma omp parallel 
   {
   size_t p_id = omp_get_thread_num();
   auto &fd = out_fd[p_id];
-  for (size_t i = p_id ; 
-       i < p_id + partition_num * partition_nodes[p_id].size() && i < node_num;
-       i += partition_num) {
+  for (const auto &i: part_node[p_id]) {
     Document root;
     root.SetObject();
     auto &allocator = root.GetAllocator();
-    root.AddMember("node_id", i, allocator);
+    root.AddMember("node_id", id_map[i], allocator);
     root.AddMember("node_type", 0, allocator);
     root.AddMember("node_weight", 1, allocator);
     Value neighbor;
@@ -105,7 +127,7 @@ int main(const int argc, const char ** argv) {
       size_t dest = edge.dest;
       // size_t edge_type = edge.edge_type;
       size_t edge_type = 0;
-      std::string dest_id_str = std::to_string(dest);
+      std::string dest_id_str = std::to_string(id_map[dest]);
       Value destId;
       destId.SetString(dest_id_str.c_str(), dest_id_str.length(), allocator);
       etypes[edge_type].AddMember(destId, 1, allocator);
@@ -139,8 +161,8 @@ int main(const int argc, const char ** argv) {
     Value edgesValue(kArrayType);
     for (const auto &edge:adj_list[i]) {
       Value edgeValue(kObjectType);
-      edgeValue.AddMember("src_id", i, allocator);
-      edgeValue.AddMember("dst_id", edge.dest, allocator);
+      edgeValue.AddMember("src_id", id_map[i], allocator);
+      edgeValue.AddMember("dst_id", id_map[edge.dest], allocator);
       edgeValue.AddMember("edge_type", edge.edge_type, allocator);
       edgeValue.AddMember("weight", 1, allocator);
       Value intValue(kObjectType), floatValue(kObjectType), boolValue(kObjectType);

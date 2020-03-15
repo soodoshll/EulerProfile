@@ -5,11 +5,14 @@ graph_type = "fast"
 # server_thread_num = 12
 
 
-server_hosts = ["node1", "node2", "node3", "node4"]
-worker_hosts = ["node1", "node2", "node3", "node4"]
+server_num = 8
+worker_num = 8
 
-# server_hosts = ["node1"]
-# worker_hosts = ["node1"]
+server_hosts = ["node"+str(i+1) for i in range(server_num)]
+worker_hosts = ["node"+str(i+1) for i in range(worker_num)]
+
+# server_hosts = ["node5", "node6", "node7", "node8"]
+# worker_hosts = ["node5", "node6", "node7", "node8"]
 
 experiment_dir = "/home/ubuntu/profile/"
 
@@ -29,7 +32,7 @@ partition_nodes_num_metis = [4730, 4999, 4711, 4972, 4730, 4999, 4711,
 4972, 4732, 5002, 4721, 4978]
 
 def partition_refine(partition, num):
-  return [sum(partition[i:i+num]) for i in range(0, 48, num)]
+  return [sum(partition[i:i+num]) for i in range(0, len(partition), num)]
 
 # directory = "/data/reddit-metis/"
 # partition_nodes_num = partition_refine(partition_nodes_num_metis, 1)
@@ -50,3 +53,31 @@ partition_config['random'] = {
 partition_config['metis'] = {
   "directory" : "/data/reddit-metis/",
   "partition" : partition_nodes_num_metis}
+
+paritition_nodes_num_freebase = [86054151 // 96] * 96
+
+partition_config['freebase'] = {
+  "directory" : "/data/freebase/",
+  "partition" : paritition_nodes_num_freebase}
+
+freebase_metis = [873404, 920288, 892478, 881628, 918642, 929990, 
+920198, 834555, 873404, 920288, 892478, 881628, 918642, 929990, 
+920198, 834555, 873404, 920288, 892478, 881627, 918642, 929990, 
+920198, 834555, 873404, 920288, 892478, 881627, 918642, 929990, 
+920198, 834554, 873404, 920288, 892478, 881627, 918642, 929989, 
+920198, 834554, 873404, 920288, 892478, 881627, 918642, 929989, 
+920198, 834554, 873403, 920288, 892478, 881627, 918642, 929989, 
+920197, 834554, 873403, 920288, 892478, 881627, 918642, 929989, 
+920197, 834554, 873403, 920288, 892478, 881627, 918642, 929989, 
+920197, 834554, 873403, 920287, 892478, 881627, 918642, 929989, 
+920197, 834554, 873403, 920287, 892477, 881627, 918642, 929989, 
+920197, 834554, 873403, 920287, 892477, 881627, 918641, 929989, 
+920197, 834554, ]
+
+partition_config['freebase-metis'] = {
+  "directory" : "/data/freebase-metis/",
+  "partition" : paritition_nodes_num_freebase}
+
+partition_config['freebase_local'] = {
+  "directory" : "/data/freebase/",
+  "partition" : partition_refine(paritition_nodes_num_freebase, 8)}
